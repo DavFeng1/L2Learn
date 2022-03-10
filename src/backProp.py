@@ -32,7 +32,7 @@ def ReLU(Z):
   return np.maximum(Z, 0)
 
 def ReluPrime(Z):
-  return Z > 0
+  return 1 * ( Z > 0 )
 
 def softmax(Z):
   A = np.exp(Z) / sum(np.exp(Z))
