@@ -10,18 +10,24 @@ testData = np.array(testDataFrame)
 trainData = np.array(trainDataFrame)
 
 # Normalize data
-epsilon = 0.001
+epsilon = 0.1
 Y = np.array([[1 if label == i else 0 for i in range(10)] 
   for label in trainData[:,0]])
 
 X = trainData[:,1:] # The input vector
-X = X / X.sum(axis=1)[:, np.newaxis] # Normalize on a per row basis
+X = X / 255
 n = 784 # Dimension of the input space (28 * 28 = 784 pixels)
-m = 4 # Dimension of hidden layer ( 4 nodes )
+m = 16 # Dimension of hidden layer ( 4 nodes )
 l = 10 # Dimension of output ( 10 possible digits to classify )
 k = 60000 # Size of training data
 
 # Define functions
+def sigmoid(x):
+  return 1 / ( 1 + np.exp(-x))
+
+def sigmoidPrime(x):
+  return np.exp(-x) / ( 1 + np.exp(-x)) ** 2
+
 def ReLU(Z):
   return np.maximum(Z, 0)
 
@@ -32,10 +38,11 @@ def softmax(Z):
   A = np.exp(Z) / sum(np.exp(Z))
   return A
 
-def error(l, p):
-  if (len(p) != len(l)):
+def error(P, L):
+  if (P.shape != L.shape):
     raise ValueError("Lengths must be the same")
-  return np.sum([0.5 * (p[i] - l[i])**2 for i in range(len(p))])
+
+  return 0.5 *  np.sum([(P[i] - L[i])**2 for i in range(l)])
 
 
 def initializeParameters():
@@ -48,8 +55,8 @@ def initializeParameters():
 
   return W0, b0, W1, b1
 
-def forwardProp(W0, W1, b0, b1, X_i):
-  A0 = W0.T.dot(X_i) + b0
+def forwardProp(W0, W1, b0, b1, X):
+  A0 = W0.T.dot(X) + b0
   Z0 = ReLU(A0)
   Z1 = W1.T.dot(Z0) + b1
   P = softmax(Z1)
@@ -59,27 +66,14 @@ def forwardProp(W0, W1, b0, b1, X_i):
 
   return A0, P
 
-def backProp(W1, P, X_i, Y_i, A0):
+def backProp(W1, P, X, Y, A0):
 
-  def z(k):
-    return (P[k] - Y_i[k]) * P[k] * (1 + P[k])
-  
-  dW0 = np.array([[ReluPrime(A0[j]) 
-    * X_i[j] 
-    * np.sum([z(k) * W1[j][k] for k in range(l)]) for i in range(n)] 
-          for j in range(m)])
+  Z = (P - Y) * P * (1 + P)
 
-  db0 = np.array([
-    ReluPrime(A0[i]) * 
-    np.sum([z(k) * W1[i][k] for k in range(l)]) 
-      for i in range(m)])
-
-  dW1 =  np.array([[ReLU(A0[i]) 
-    * z(j) 
-      for i in range(m)] 
-        for j in range(l)])
-
-  db1 =  np.array([z(k) for k in range(l)])
+  dW0 = W1.dot(Z) * np.outer(X, ReluPrime(A0))
+  db0 = ReluPrime(A0) * W1.dot(Z)
+  dW1 = np.outer(Z, ReLU(A0))
+  db1 =  Z
 
   return dW0, db0, dW1, db1
 
@@ -91,10 +85,15 @@ def getAccuracy(p, Y):
   return np.sum(p == Y) / Y.size
 
 def updateParams(W0, W1, b0, b1, dW0, dW1, db0, db1, epsilon):
-  W0 = W0 - epsilon * dW0.T
+  # W0_prev = W0
+  # W1_prev = W1
+  W0 = W0 - epsilon * dW0
   b0 = b0 - epsilon * db0
   W1 = W1 - epsilon * dW1.T
   b1 = b1 - epsilon * db1
+
+  # print("========== W0 Diff", np.sum(W0 - W0_prev))
+  # print("========== W1 Diff", np.sum(W1 - W1_prev))
 
   return W0, b0, W1, b1
 
@@ -107,11 +106,10 @@ def gradientDescent(X, Y, epsilon, iterations):
     dW0, db0, dW1, db1 = backProp(W1, P, X[i], Y[i], A0)
     W0, b0, W1, b1 = updateParams(W0, W1, b0, b1, dW0, dW1, db0, db1, epsilon)
 
-    currError = error(P, Y[i])
-    errors.append(currError)
-
-    if i % 50 == 0:
+    if i % 100 == 0:
       print("Iteration: ===================", i)
+      currError = error(P, Y[i])
+      errors.append(currError)
       print("Error: ", currError)
 
   plt.plot(errors)
@@ -120,5 +118,5 @@ def gradientDescent(X, Y, epsilon, iterations):
   return W0, b0, W1, b1
 
 
-W0, b0, W1, b1 = gradientDescent( X, Y, epsilon, 2)
+W0, b0, W1, b1 = gradientDescent( X, Y, epsilon, 60000)
 # %%
