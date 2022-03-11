@@ -46,34 +46,32 @@ def error(P, L):
 
 
 def initializeParameters():
-  # Initialize weights for the input and the hidden layer
-  # Between -0.5 and 0.5 since we are using ReLU as activation function
-  W0 = np.random.rand(n, m) - 0.5
-  W1 = np.random.rand(m, l) - 0.5
+  W0 = np.random.rand(m, n) - 0.5
+  W1 = np.random.rand(l, m) - 0.5
   b0 = np.random.rand(m) - 0.5
   b1 = np.random.rand(l) - 0.5
 
   return W0, b0, W1, b1
 
 def forwardProp(W0, W1, b0, b1, X):
-  A0 = W0.T.dot(X) + b0
-  Z0 = ReLU(A0)
-  Z1 = W1.T.dot(Z0) + b1
+  Z0 = W0.dot(X) + b0
+  A0 = ReLU(Z0)
+  Z1 = W1.dot(A0) + b1
   P = softmax(Z1)
 
   if not math.isclose(np.sum(P), 1.0):
     raise ValueError("forwardProp: P does not sum to 1")
 
-  return A0, P
+  return Z0, P
 
-def backProp(W1, P, X, Y, A0):
+def backProp(W1, P, X, Y, Z0):
 
-  Z = (P - Y) * P * (1 + P)
+  PY = (P - Y) * P * (1 + P)
 
-  dW0 = W1.dot(Z) * np.outer(X, ReluPrime(A0))
-  db0 = ReluPrime(A0) * W1.dot(Z)
-  dW1 = np.outer(Z, ReLU(A0))
-  db1 =  Z
+  dW0 = np.outer(ReluPrime(Z0).dot(W1.T.dot(PY)), X)
+  db0 = ReluPrime(Z0) * W1.T.dot(PY)
+  dW1 = np.outer(PY, ReLU(Z0))
+  db1 = PY
 
   return dW0, db0, dW1, db1
 
@@ -89,9 +87,8 @@ def updateParams(W0, W1, b0, b1, dW0, dW1, db0, db1, epsilon):
   # W1_prev = W1
   W0 = W0 - epsilon * dW0
   b0 = b0 - epsilon * db0
-  W1 = W1 - epsilon * dW1.T
+  W1 = W1 - epsilon * dW1
   b1 = b1 - epsilon * db1
-
   # print("========== W0 Diff", np.sum(W0 - W0_prev))
   # print("========== W1 Diff", np.sum(W1 - W1_prev))
 
@@ -102,8 +99,8 @@ def gradientDescent(X, Y, epsilon, iterations):
   W0, b0, W1, b1 = initializeParameters()
   errors = []
   for i in range(iterations):
-    A0, P = forwardProp(W0, W1, b0, b1, X[i])
-    dW0, db0, dW1, db1 = backProp(W1, P, X[i], Y[i], A0)
+    Z0, P = forwardProp(W0, W1, b0, b1, X[i])
+    dW0, db0, dW1, db1 = backProp(W1, P, X[i], Y[i], Z0)
     W0, b0, W1, b1 = updateParams(W0, W1, b0, b1, dW0, dW1, db0, db1, epsilon)
 
     if i % 100 == 0:
