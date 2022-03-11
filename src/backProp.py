@@ -1,7 +1,10 @@
+import math
 import numpy as np
 import pandas as pd
-import math
 from matplotlib import pyplot as plt
+from activations import ReLU, ReluPrime, softmax
+from cost import meanSquareError
+
 np.seterr(all='raise')
 
 testDataFrame = pd.read_csv("./datasets/mnist/mnistTest.csv")
@@ -10,7 +13,7 @@ testData = np.array(testDataFrame)
 trainData = np.array(trainDataFrame)
 
 # Normalize data
-epsilon = 0.1
+epsilon = 0.01
 Y = np.array([[1 if label == i else 0 for i in range(10)] 
   for label in trainData[:,0]])
 
@@ -21,40 +24,23 @@ m = 16 # Dimension of hidden layer ( 4 nodes )
 l = 10 # Dimension of output ( 10 possible digits to classify )
 k = 60000 # Size of training data
 
-# Define functions
-def sigmoid(x):
-  return 1 / ( 1 + np.exp(-x))
-
-def sigmoidPrime(x):
-  return np.exp(-x) / ( 1 + np.exp(-x)) ** 2
-
-def ReLU(Z):
-  return np.maximum(Z, 0)
-
-def ReluPrime(Z):
-  return 1 * ( Z > 0 )
-
-def softmax(Z):
-  A = np.exp(Z) / sum(np.exp(Z))
-  return A
-
-def error(P, L):
-  if (P.shape != L.shape):
-    raise ValueError("Lengths must be the same")
-
-  return 0.5 *  np.sum([(P[i] - L[i])**2 for i in range(l)])
-
+# Plot 10 numbers
+# fig, axes = plt.subplots(2,5, figsize=(12,5))
+# axes = axes.flatten()
+# for i in range(10):
+#     axes[i].imshow(X[i].reshape(28,28), cmap='gray')
+# plt.savefig("numbers")
 
 def initializeParameters():
-  W0 = np.random.rand(m, n) - 0.5
-  W1 = np.random.rand(l, m) - 0.5
-  b0 = np.random.rand(m) - 0.5
-  b1 = np.random.rand(l) - 0.5
+  W0 = (1/n) * (np.random.rand(m, n) - 0.5)
+  W1 = (1/m) * (np.random.rand(l, m) - 0.5)
+  b0 = (1/n) * (np.random.rand(m) - 0.5)
+  b1 =  (1/m) * (np.random.rand(l) - 0.5)
 
   return W0, b0, W1, b1
 
-def forwardProp(W0, W1, b0, b1, X):
-  Z0 = W0.dot(X) + b0
+def forwardProp(W0, W1, b0, b1, X_i):
+  Z0 = W0.dot(X_i) + b0
   A0 = ReLU(Z0)
   Z1 = W1.dot(A0) + b1
   P = softmax(Z1)
@@ -83,37 +69,45 @@ def getAccuracy(p, Y):
   return np.sum(p == Y) / Y.size
 
 def updateParams(W0, W1, b0, b1, dW0, dW1, db0, db1, epsilon):
-  # W0_prev = W0
-  # W1_prev = W1
   W0 = W0 - epsilon * dW0
   b0 = b0 - epsilon * db0
   W1 = W1 - epsilon * dW1
   b1 = b1 - epsilon * db1
-  # print("========== W0 Diff", np.sum(W0 - W0_prev))
-  # print("========== W1 Diff", np.sum(W1 - W1_prev))
 
   return W0, b0, W1, b1
 
-def gradientDescent(X, Y, epsilon, iterations):
+def singlePass():
+  pass
+
+def gradientDescent(X, Y, epsilon, epochs):
   
   W0, b0, W1, b1 = initializeParameters()
-  errors = []
-  for i in range(iterations):
-    Z0, P = forwardProp(W0, W1, b0, b1, X[i])
-    dW0, db0, dW1, db1 = backProp(W1, P, X[i], Y[i], Z0)
-    W0, b0, W1, b1 = updateParams(W0, W1, b0, b1, dW0, dW1, db0, db1, epsilon)
+  w1_average = []
+  w0_average = []
+  b0_average = []
+  b1_average = []
+  error_average = []
 
-    if i % 100 == 0:
-      print("Iteration: ===================", i)
-      currError = error(P, Y[i])
-      errors.append(currError)
-      print("Error: ", currError)
+  for i in range(epochs):
+    for j in range(k):
+      Z0, P = forwardProp(W0, W1, b0, b1, X[j])
+      dW0, db0, dW1, db1 = backProp(W1, P, X[j], Y[j], Z0)
+      W0, b0, W1, b1 = updateParams(W0, W1, b0, b1, dW0, dW1, db0, db1, epsilon)
 
-  plt.plot(errors)
-  plt.ylabel("Errors")
-  plt.savefig('errors.png')
+      if j % 1000 == 0:
+        w1_average.append(np.sum(W1) / len(W1))
+        currError = meanSquareError(P, Y[i])
+        error_average.append(currError)
+
+        if j % 7500 == 0:
+          print("================ Epoch: {}, iteration: {} ===================".format(i, j))
+          print("Error: ", currError)
+
+  plt.plot(error_average, label="Error")
+  plt.plot(w1_average, label="W1 Average")
+  plt.savefig("trainingCurve.png")
   return W0, b0, W1, b1
 
 
-W0, b0, W1, b1 = gradientDescent( X, Y, epsilon, 60000)
+W0, b0, W1, b1 = gradientDescent( X, Y, epsilon, 5)
 # %%
