@@ -1,19 +1,36 @@
+import sys
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
+sys.path.append('../common')
 from functions import sigmoid, sigmoidPrime, softmax, meanSquareError, getAccuracy
+from matplotlib import pyplot as plt
+
+
 np.seterr(all='raise')
 
 # =============================================================================
 num_inputs = 784 # Dimension of the input space (28 * 28 = 784 pixels)
-num_hidden = 4 # Dimension of hidden layer ( 4 nodes )
+num_hidden = 128 # Dimension of hidden layer ( 4 nodes )
 num_labels = 10 # Dimension of output ( 10 possible digits to classify )
-training_batch_size = 1000 # Size of training data
+training_batch_size = 2 # Size of training data
 learning_rate = 0.1
 precision = 1e-7
 
+class NeuralNetwork:
+  def __init__(self, learning_rate=0.01):
+    self.learning_rate = learning_rate
+
+class NeuralLayer:
+  def __init__(self, size=4):
+    self.size = size
+
+class Neuron:
+  def __init__(self, activation_function):
+    self.activation_function = activation_function
+
+
 def initializeTestData():
-  testDataFrame = pd.read_csv("./datasets/mnist/mnistTest.csv")
+  testDataFrame = pd.read_csv("../datasets/mnist/mnistTest.csv")
   testData = np.array(testDataFrame)
 
   Y_test = oneHotEncode(testData[:, 0])  # (60000, 10)
@@ -26,7 +43,7 @@ def initializeTestData():
   return X_test, Y_test
 
 def initializeTrainData():
-  trainDataFrame = pd.read_csv("./datasets/mnist/mnistTrain.csv")
+  trainDataFrame = pd.read_csv("../datasets/mnist/mnistTrain.csv")
   trainData = np.array(trainDataFrame)
 
   Y_train = oneHotEncode(trainData[:training_batch_size, 0])  # (training_batch_size, 10)
@@ -112,13 +129,13 @@ def gradientDescent(epsilon, num_epochs):
   plt.plot(training_error, label="error")
   plt.title("Training Error")
   plt.savefig("training_error.png")
-  plt.close()
+  plt.show()
 
   # Plot training accuracy
   plt.plot(training_accuracy, label="Accuracy")
   plt.title("Training Accuracy")
   plt.savefig("training_accuracy.png")
-  plt.close()
+  plt.show()
 
   return W0, b0, W1, b1
 
@@ -140,6 +157,6 @@ def testModel(W0, b0, W1, b1):
 def trainAndTest(learning_rate, epochs):
   print("Train and test...")
   W0, b0, W1, b1 = gradientDescent(learning_rate, epochs)
-  testModel(W0, b0, W1, b1)
+  # testModel(W0, b0, W1, b1)
 
-trainAndTest(learning_rate, epochs=300)
+trainAndTest(learning_rate, epochs=500)
